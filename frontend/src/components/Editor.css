@@ -1,0 +1,27 @@
+.editor-container {
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.editor-container:focus-within {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.code-editor {
+    width: 100%;
+    height: 400px;
+    padding: 20px;
+    font-family: 'Courier New', 'Fira Code', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    border: none;
+    resize: vertical;
+    background: #fafafa;
+}
+
+.code-editor:focus {
+    outline: none;
+}
