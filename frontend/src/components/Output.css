@@ -1,124 +1,214 @@
-.output-container {
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 20px;
-    min-height: 400px;
-    max-height: 500px;
-    overflow: auto;
-    background: #fafafa;
+import React from 'react';
+import './Output.css';
+
+function Output({ result, activeTab, loading }) {
+    if (loading) {
+        return (
+            <div className="output-container">
+                <div className="loading">
+                    <div className="spinner"></div>
+                    <p>Compiling your code...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!result) {
+        return (
+            <div className="output-container">
+                <div className="placeholder">
+                    <p>👈 Write some C code and click "Compile"</p>
+                    <p className="hint">Try loading the example code!</p>
+                </div>
+            </div>
+        );
+    }
+
+    // ============ TOKENS RENDER ============
+    const renderTokens = () => {
+        if (!result.tokens || result.tokens.length === 0) {
+            return <p>No tokens generated.</p>;
+        }
+        
+        return (
+            <table className="output-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Value</th>
+                        <th>Line</th>
+                        <th>Column</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {result.tokens.map((token, idx) => (
+                        <tr key={idx}>
+                            <td><span className={`token-type ${token.type.toLowerCase()}`}>{token.type}</span></td>
+                            <td><code>{token.value}</code></td>
+                            <td>{token.line}</td>
+                            <td>{token.column}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        );
+    };
+
+    // ============ DYNAMIC AST TREE VIEW ============
+    const renderASTTree = (node, depth = 0, isLast = true) => {
+        if (!node) return null;
+        
+        const prefix = depth === 0 ? '' : (isLast ? '└─ ' : '├─ ');
+        const indent = '  '.repeat(depth);
+        
+        // Handle Program node
+        if (node.type === 'Program') {
+            return (
+                <div style={{ fontFamily: 'monospace', fontSize: '14px', lineHeight: '1.8' }}>
+                    <div style={{ color: '#4CAF50', fontWeight: 'bold' }}>📁 Program</div>
+                    {node.functions && node.functions.length > 0 && (
+                        <div style={{ marginLeft: '20px' }}>
+                            <div style={{ color: '#FF9800' }}>├─ 📂 Functions</div>
+                            {node.functions.map((func, idx) => (
+                                <div key={idx} style={{ marginLeft: '40px' }}>
+                                    <div style={{ color: '#2196F3' }}>
+                                        {idx === node.functions.length - 1 ? '└─ ' : '├─ '}🔧 {func.name}
+                                    </div>
+                                    <div style={{ marginLeft: '20px', color: '#9CDCFE' }}>
+                                        {idx === node.functions.length - 1 ? '   └─ ' : '│  └─ '}Return: {func.returnType}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {node.variables && node.variables.length > 0 && (
+                        <div style={{ marginLeft: '20px' }}>
+                            <div style={{ color: '#FF9800' }}>└─ 📦 Variables</div>
+                            {node.variables.map((var_, idx) => (
+                                <div key={idx} style={{ marginLeft: '40px' }}>
+                                    <div style={{ color: '#CE9178' }}>
+                                        {idx === node.variables.length - 1 ? '└─ ' : '├─ '}📦 {var_.name}
+                                    </div>
+                                    <div style={{ marginLeft: '20px', color: '#9CDCFE' }}>
+                                        {idx === node.variables.length - 1 ? '   └─ ' : '│  └─ '}Type: {var_.dataType}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        return <pre className="ast-tree">{JSON.stringify(node, null, 2)}</pre>;
+    };
+
+    const renderAST = () => {
+        if (!result.ast) {
+            return <p>No AST generated.</p>;
+        }
+        
+        return (
+            <div className="ast-viewer" style={{
+                background: '#ffffff',
+                color: '#d4d4d4',
+                padding: '15px',
+                borderRadius: '8px',
+                overflow: 'auto',
+                maxHeight: '450px'
+            }}>
+                {renderASTTree(result.ast)}
+            </div>
+        );
+    };
+
+    // ============ SYMBOL TABLE RENDER ============
+    const renderSymbolTable = () => {
+        if (!result.symbolTable || result.symbolTable.length === 0) {
+            return <p>No symbols in table.</p>;
+        }
+        
+        return (
+            <table className="output-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Scope</th>
+                        <th>Initialized</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {result.symbolTable.map((symbol, idx) => (
+                        <tr key={idx}>
+                            <td><strong>{symbol.name}</strong></td>
+                            <td>{symbol.type}</td>
+                            <td>{symbol.scope}</td>
+                            <td>{symbol.initialized ? '✓' : '✗'}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        );
+    };
+
+    // ============ GENERATED CODE RENDER ============
+    const renderGeneratedCode = () => {
+        if (!result.generatedCode) {
+            return <p>No code generated.</p>;
+        }
+        
+        return (
+            <pre className="generated-code">{result.generatedCode}</pre>
+        );
+    };
+
+    // ============ OUTPUT RENDER ============
+    const renderOutput = () => {
+        if (!result.success) {
+            return (
+                <div className="error-message">
+                    <h4>❌ Compilation Failed</h4>
+                    <p>{result.message || result.error}</p>
+                    {result.errors && result.errors.length > 0 && (
+                        <div className="error-list">
+                            <h5>Errors:</h5>
+                            <ul>
+                                {result.errors.map((err, idx) => (
+                                    <li key={idx}>{err}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        return (
+            <div className="success-message">
+                <h4>✅ {result.message}</h4>
+                <p>Compilation completed successfully!</p>
+            </div>
+        );
+    };
+
+    // ============ TAB CONTENT RENDER ============
+    const renderContent = () => {
+        switch(activeTab) {
+            case 'tokens': return renderTokens();
+            case 'ast': return renderAST();
+            case 'symbols': return renderSymbolTable();
+            case 'code': return renderGeneratedCode();
+            case 'output': return renderOutput();
+            default: return renderOutput();
+        }
+    };
+
+    return (
+        <div className="output-container">
+            {renderContent()}
+        </div>
+    );
 }
 
-.loading {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 300px;
-}
-
-.spinner {
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #667eea;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.placeholder {
-    text-align: center;
-    color: #999;
-    padding: 50px;
-}
-
-.hint {
-    font-size: 12px;
-    margin-top: 10px;
-}
-
-.output-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.output-table th,
-.output-table td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.output-table th {
-    background: #f0f0f0;
-    font-weight: 600;
-}
-
-.token-type {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.token-type.keyword { background: #ff6b6b; color: white; }
-.token-type.identifier { background: #4ecdc4; color: white; }
-.token-type.number { background: #45b7d1; color: white; }
-.token-type.operator { background: #96ceb4; color: white; }
-.token-type.punctuation { background: #f9ca24; color: white; }
-
-.ast-tree {
-    font-family: 'Courier New', monospace;
-    font-size: 12px;
-    background: #2d2d2d;
-    color: #f8f8f2;
-    padding: 15px;
-    border-radius: 8px;
-    overflow: auto;
-    margin: 0;
-}
-
-.generated-code {
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    background: #2d2d2d;
-    color: #f8f8f2;
-    padding: 15px;
-    border-radius: 8px;
-    overflow: auto;
-    margin: 0;
-}
-
-.error-message {
-    color: #721c24;
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    border-radius: 8px;
-    padding: 15px;
-}
-
-.success-message {
-    color: #155724;
-    background-color: #d4edda;
-    border: 1px solid #c3e6cb;
-    border-radius: 8px;
-    padding: 15px;
-}
-
-.error-list {
-    margin-top: 15px;
-}
-
-.error-list ul {
-    margin-left: 20px;
-    margin-top: 10px;
-}
-
-.error-list li {
-    margin: 5px 0;
-}
+export default Output;
