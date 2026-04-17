@@ -1,83 +1,57 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const JavaScriptCompiler = require('./compiler-sim');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.static(path.join(__dirname, '..', 'frontend', 'build')));
 
-// Simple test compiler that works
-function simpleCompile(code) {
-    const lines = code.split('\n');
-    const tokens = [];
-    
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const words = line.split(/\s+/);
-        
-        for (const word of words) {
-            if (word === 'int' || word === 'return' || word === 'main' || word === 'printf' || word === 'include') {
-                tokens.push({ type: 'KEYWORD', value: word, line: i + 1, column: 1 });
-            } else if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(word) && word !== 'int' && word !== 'return' && word !== 'main') {
-                tokens.push({ type: 'IDENTIFIER', value: word, line: i + 1, column: 1 });
-            } else if (/^[0-9]+$/.test(word)) {
-                tokens.push({ type: 'NUMBER', value: word, line: i + 1, column: 1 });
-            } else if (/^[+\-*/=<>!&|]$/.test(word)) {
-                tokens.push({ type: 'OPERATOR', value: word, line: i + 1, column: 1 });
-            } else if (/^[(){},;]$/.test(word)) {
-                tokens.push({ type: 'PUNCTUATION', value: word, line: i + 1, column: 1 });
-            }
-        }
-    }
-    
-    // Build symbol table
-    const symbolTable = [];
-    const variables = ['a', 'b', 'c', 'num', 'result', 'i', 'n'];
-    for (const varName of variables) {
-        if (code.includes(varName)) {
-            symbolTable.push({ name: varName, type: 'int', scope: 'main', initialized: true });
-        }
-    }
-    
-    return {
-        success: true,
-        message: 'Compilation Successful!',
-        tokens: tokens,
-        ast: { type: 'Program', children: [] },
-        symbolTable: symbolTable,
-        generatedCode: code,
-        errors: []
-    };
-}
-
-// API endpoint
+// Compile endpoint
 app.post('/api/compile', (req, res) => {
     const { code } = req.body;
-    console.log('Received compilation request');
     
     if (!code) {
-        return res.status(400).json({ success: false, error: 'No code provided' });
+        return res.status(400).json({
+            success: false,
+            error: 'No code provided'
+        });
     }
     
     try {
-        const result = simpleCompile(code);
+        const compiler = new JavaScriptCompiler();
+        const result = compiler.compile(code);
         res.json(result);
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
+        console.error('Compilation error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
     }
 });
 
-// Serve frontend build files
-app.use(express.static(path.join(__dirname, '..', 'frontend', 'build')));
+// Get compiler info
+app.get('/api/info', (req, res) => {
+    res.json({
+        name: 'Mini C Compiler - Full Version',
+        version: '2.0.0',
+        stages: ['Preprocessing', 'Lexical Analysis', 'Syntax Analysis', 'Semantic Analysis', 'Code Generation'],
+        features: ['Functions', 'If-Else', 'Loops (for, while, do-while)', 'Variables', 'Arrays', 'Pointers', 'Structs'],
+        core: 'JavaScript - Full C Compiler'
+    });
+});
 
-// Handle all other routes
+// Serve React app
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'frontend', 'build', 'index.html'));
 });
 
 app.listen(PORT, () => {
-    console.log(`✅ Server running on port ${PORT}`);
-    console.log(`📍 Open: http://localhost:${PORT}`);
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`✅ Full C Compiler Ready!`);
+    console.log(`📝 Supports: Functions, Loops, If-Else, Variables, Arrays, Pointers`);
 });
